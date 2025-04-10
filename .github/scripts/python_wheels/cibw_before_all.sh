@@ -17,6 +17,11 @@ if [ "$(uname)" == "Linux" ]; then
     yum install -y wget doxygen
 elif [ "$(uname)" == "Darwin" ]; then
     brew install wget cmake doxygen
+
+    # Default to macOS 10.15 if MACOSX_DEPLOYMENT_TARGET is not set
+    if [[ -z "${MACOSX_DEPLOYMENT_TARGET}" ]]; then
+        export MACOSX_DEPLOYMENT_TARGET="10.15"
+    fi
 fi
 
 # Install Boost from source
@@ -30,14 +35,14 @@ BOOST_PREFIX="$HOME/opt/boost"
 if [ "$(uname)" == "Linux" ]; then
     ./b2 install --prefix=${BOOST_PREFIX} --with=all -d0
 elif [ "$(uname)" == "Darwin" ]; then
-    # Default to macOS 10.15 if MACOSX_DEPLOYMENT_TARGET is not set
-    if [[ -z "${MACOSX_DEPLOYMENT_TARGET}" ]]; then
-        export MACOSX_DEPLOYMENT_TARGET="10.15"
-    fi
-
     ./b2 install --prefix=${BOOST_PREFIX} --with=all -d0 \
         cxxflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
         linkflags="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+
+    # Add rpath to Boost dylibs so delocate can find them
+    for dylib in ${BOOST_LIBRARYDIR}/*.dylib; do
+        install_name_tool -add_rpath "@loader_path" "$dylib"
+    done
 fi
 cd ..
 
